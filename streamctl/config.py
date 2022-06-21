@@ -13,6 +13,6 @@ def get() -> configparser.ConfigParser:
     return config
 
 def set(config: configparser.ConfigParser):
-    os.makedirs(LOCAL_CONFIG_DIR)
+    os.makedirs(LOCAL_CONFIG_DIR, exist_ok=True)
     with open(LOCAL_CONFIG_PATH, "w") as file:
         config.write(file)
