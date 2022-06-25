@@ -21,8 +21,8 @@ def add_peertube(args: argparse.Namespace):
     cfg[args.NAME] = {}
     cfg[args.NAME]["type"] = "peertube"
     cfg[args.NAME]["base_url"] = args.BASE_URL
-    cfg[args.NAME]["client_id"] = args.CLIENT_ID
-    cfg[args.NAME]["client_secret"] = args.CLIENT_SECRET
+    cfg[args.NAME]["username"] = args.USERNAME
+    cfg[args.NAME]["password"] = args.PASSWORD
     config.set(cfg)
     print(f"Added \"{args.NAME}\" as a PeerTube service")
 

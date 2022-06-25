@@ -1,7 +1,7 @@
 import requests
 from twitchAPI.twitch import Twitch
 from twitchAPI.types import AuthScope
-from twitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token
+fromtwitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token
 
 import base64
 import uuid
@@ -16,7 +16,7 @@ TWITCH_SCOPES = [
         AuthScope.USER_EDIT_BROADCAST,
     ]
 
-def authenticate(name: str):
+def authenticate(name: str) -> None:
     cfg = config.get()
     sub = cfg[name]
     
@@ -54,7 +54,7 @@ def authenticate(name: str):
     config.set(cfg)
 
 
-def _get_client(name: str):
+def _get_client(name: str) -> Twitch:
     authenticate(name)
 
     cfg = config.get()
@@ -68,7 +68,7 @@ def _get_client(name: str):
     return tw
 
 
-def create_stream(name: str, stream_title: str):
+def create_stream(name: str, stream_title: str) -> None:
     tw = _get_client(name)
     cfg = config.get()
     sub = cfg[name]
