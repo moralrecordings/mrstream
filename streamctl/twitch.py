@@ -1,25 +1,22 @@
 import requests
 from twitchAPI.twitch import Twitch
 from twitchAPI.types import AuthScope
-fromtwitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token
-
-import base64
-import uuid
+from twitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token
 
 from streamctl import config
 
 TWITCH_SCOPES = [
-        AuthScope.CHANNEL_READ_STREAM_KEY,
-        AuthScope.CHANNEL_MANAGE_BROADCAST,
-        AuthScope.USER_READ_EMAIL,
-        AuthScope.USER_EDIT,
-        AuthScope.USER_EDIT_BROADCAST,
-    ]
+    AuthScope.CHANNEL_READ_STREAM_KEY,
+    AuthScope.CHANNEL_MANAGE_BROADCAST,
+    AuthScope.USER_READ_EMAIL,
+    AuthScope.USER_EDIT,
+    AuthScope.USER_EDIT_BROADCAST,
+]
 
 def authenticate(name: str) -> None:
     cfg = config.get()
-    sub = cfg[name]
-    
+    sub = cfg[f"config.{name}"]
+
     client_id: str = sub.get("client_id")
     client_secret: str = sub.get("client_secret")
     
@@ -31,6 +28,7 @@ def authenticate(name: str) -> None:
             token, refresh_token = refresh_access_token(sub["refresh_token"], client_id, client_secret)
             sub["token"] = token
             sub["refresh_token"] = refresh_token
+            config.set(cfg)
             return
     
     tw = Twitch(client_id, client_secret)
@@ -54,11 +52,11 @@ def authenticate(name: str) -> None:
     config.set(cfg)
 
 
-def _get_client(name: str) -> Twitch:
+def get_client(name: str) -> Twitch:
     authenticate(name)
 
     cfg = config.get()
-    sub = cfg[name]
+    sub = cfg[f"config.{name}"]
     client_id: str = sub.get("client_id")
     client_secret: str = sub.get("client_secret")
     token: str = sub.get("token")
@@ -68,10 +66,10 @@ def _get_client(name: str) -> Twitch:
     return tw
 
 
-def create_stream(name: str, stream_title: str) -> None:
-    tw = _get_client(name)
+def create_stream(name: str, stream_title: str, game_name: str) -> None:
+    tw = get_client(name)
     cfg = config.get()
-    sub = cfg[name]
+    sub = cfg[f"config.{name}"]
     sub["stream_key"] = tw.get_stream_key(sub.get("user_id"))["data"]["stream_key"]
     tw.modify_channel_information(sub["user_id"], "0", stream_title)
     config.set(cfg)

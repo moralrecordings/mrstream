@@ -5,7 +5,7 @@ from streamctl import config
 
 def authenticate(name: str) -> None:
     cfg = config.get()
-    sub = cfg[name]
+    sub = cfg[f"config.{name}"]
     
     if "client_id" not in sub:
         clients = requests.get(f"{sub['base_url']}/api/v1/oauth-clients/local").json()
@@ -54,9 +54,9 @@ def authenticate(name: str) -> None:
     config.set(cfg)
 
 
-def create_stream(name: str, stream_title: str) -> None:
+def create_stream(name: str, stream_title: str, game_name: str) -> None:
     cfg = config.get()
-    sub = cfg[name]
+    sub = cfg[f"config.{name}"]
 
     response = requests.post(
         f"{sub['base_url']}/videos/live",
