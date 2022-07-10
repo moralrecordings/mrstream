@@ -1,6 +1,6 @@
 from os import path
 from setuptools import setup, find_packages
-from streamctl.version import __version__
+from mrstream.version import __version__
 
 # Get the long description from the README file
 #here = path.abspath( path.dirname( __file__ ) )
@@ -8,7 +8,7 @@ from streamctl.version import __version__
 #    long_description = f.read()
 
 setup(
-    name="streamctl",
+    name="mrstream",
     version=__version__,
     description=(
         "The multistreaming multitool"
@@ -34,13 +34,14 @@ setup(
         "oauth2-client >= 1.2.1",
         "appdirs >= 1.4.4",
         "twitchAPI >= 2.5.5",
+        "thefuzz >= 0.19.0",
     ],
     extras_require={
     },
     packages=find_packages( exclude=["doc"] ),
     entry_points={
         "console_scripts": [
-            "streamctl = streamctl.cli:main",
+            "mrstream = mrstream.cli:main",
         ],
     },
 )

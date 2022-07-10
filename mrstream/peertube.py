@@ -1,6 +1,7 @@
+from typing import Optional
 import requests
 
-from streamctl import config
+from . import config
 
 
 def authenticate(name: str) -> None:
@@ -54,17 +55,38 @@ def authenticate(name: str) -> None:
     config.set(cfg)
 
 
-def create_stream(name: str, stream_title: str, game_name: str) -> None:
+def create_stream(
+    name: str,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    announcement: Optional[str] = None,
+    game: Optional[str] = None,
+    gameid: Optional[str] = None,
+    lang: Optional[str] = None,
+    vod: bool = False
+) -> None:
+    authenticate(name)
     cfg = config.get()
     sub = cfg[f"config.{name}"]
+    headers={
+        "Authorization": f"Bearer {sub['token']}"
+    }
+
+    payload = {
+        "channelId": sub["channel_id"], 
+        "name": title,
+        "saveReplay": vod
+    }
+    if description:
+        payload["description"] = description
+
+    if lang:
+        payload["language"] = lang
 
     response = requests.post(
         f"{sub['base_url']}/videos/live",
-        {
-            "channelId": sub["channel_id"],
-            "name": stream_title,
-            "saveReplay": True,
-        },
+        payload,
+        headers=headers
     )
     response.raise_for_status()
 

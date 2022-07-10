@@ -1,9 +1,10 @@
+from typing import List, Optional
 import requests
 from twitchAPI.twitch import Twitch
 from twitchAPI.types import AuthScope
 from twitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token
 
-from streamctl import config
+from . import config
 
 TWITCH_SCOPES = [
     AuthScope.CHANNEL_READ_STREAM_KEY,
@@ -66,10 +67,25 @@ def get_client(name: str) -> Twitch:
     return tw
 
 
-def create_stream(name: str, stream_title: str, game_name: str) -> None:
+def create_stream(
+    name: str,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    announcement: Optional[str] = None,
+    game: Optional[str] = None,
+    gameid: Optional[str] = None,
+    lang: Optional[str] = None,
+    vod: bool = False
+) -> None:
     tw = get_client(name)
     cfg = config.get()
     sub = cfg[f"config.{name}"]
-    sub["stream_key"] = tw.get_stream_key(sub.get("user_id"))["data"]["stream_key"]
-    tw.modify_channel_information(sub["user_id"], "0", stream_title)
+    sub["stream_key"] = tw.get_stream_key(sub.get("user_id"))["data"][0]["stream_key"]
+    if game is not None and gameid is None:
+        game_lookups = tw.search_categories(game)["data"]
+        if game_lookups:
+            gameid = game_lookups[0]["id"]
+    tw.modify_channel_information(sub["user_id"], game_id = gameid, broadcaster_language=lang, title=title)
     config.set(cfg)
+
+
