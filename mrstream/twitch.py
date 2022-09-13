@@ -86,6 +86,12 @@ def create_stream(
         if game_lookups:
             gameid = game_lookups[0]["id"]
     tw.modify_channel_information(sub["user_id"], game_id = gameid, broadcaster_language=lang, title=title)
+
+    ingest = requests.get("https://ingest.twitch.tv/ingests").json()["ingests"][0]["url_template"]
+    sub["endpoint"] = ingest.format(stream_key=sub["stream_key"])
+
+    print(f"{name}: https://twitch.tv/{sub['login']}")
+
     config.set(cfg)
 
 

@@ -45,12 +45,13 @@ def authenticate(name: str) -> None:
     sub["token"] = rj["access_token"]
     sub["refresh_token"] = rj["refresh_token"]
 
-    user = requests.get(f"{sub['base_url']}/users/me",
+    user = requests.get(f"{sub['base_url']}/api/v1/users/me",
         headers={
             "Authorization": f"Bearer {sub['token']}"
         }
-    )
-    sub["channel_id"] = user.json()[0]["videoChannels"][0]["id"]
+    ).json()
+
+    sub["channel_id"] = str(user["videoChannels"][0]["id"])
 
     config.set(cfg)
 
@@ -75,7 +76,8 @@ def create_stream(
     payload = {
         "channelId": sub["channel_id"], 
         "name": title,
-        "saveReplay": vod
+        "saveReplay": vod,
+        "privacy": 1,
     }
     if description:
         payload["description"] = description
@@ -84,13 +86,23 @@ def create_stream(
         payload["language"] = lang
 
     response = requests.post(
-        f"{sub['base_url']}/videos/live",
+        f"{sub['base_url']}/api/v1/videos/live",
         payload,
         headers=headers
     )
     response.raise_for_status()
+    video_data = response.json()["video"]
+    print(f"{name}: {sub['base_url']}/w/{video_data['shortUUID']}")
 
-    sub["current_live_id"] = response.json()["uuid"]
+    sub["current_live_id"] = video_data["uuid"]
+
+    endpoint = requests.get(
+        f"{sub['base_url']}/api/v1/videos/live/{sub['current_live_id']}",
+        headers=headers
+    ).json()
+
+    sub["stream_key"] = endpoint["streamKey"]
+    sub["endpoint"] = endpoint["rtmpUrl"] + f"/{sub['stream_key']}"
 
     config.set(cfg)
     
