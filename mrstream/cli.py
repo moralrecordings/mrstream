@@ -2,7 +2,7 @@ import argparse
 
 from . import config, twitch, peertube
 from .game_lookup import search
-
+from .nginx import run_server
 
 def add_twitch(args: argparse.Namespace) -> None:
     cfg = config.get()
@@ -126,6 +126,10 @@ def game_lookup(args: argparse.Namespace) -> None:
         print(f"{r.name} (id {r.game_id}, confidence {r.confidence})")
 
 
+def runserver(args: argparse.Namespace) -> None:
+    run_server()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Manage streaming across multiple services",
@@ -178,7 +182,10 @@ def main():
     parser_update.add_argument("--lang", help="ISO 639-1 code for the stream language")
     parser_update.add_argument("--novod", dest='vod', action='store_false', help="Disable recording")
     parser_update.set_defaults(func=update)
-     
+    
+    parser_runserver = subparser.add_parser("runserver", description="Run an nginx RTMP muxer")
+    parser_runserver.set_defaults(func=runserver)
+
     parser_set_defaults = subparser.add_parser("set_defaults", description="Set the defaults for a streaming session")
     parser_set_defaults.add_argument("--title", help="Title of the stream")
     parser_set_defaults.add_argument("--description", help="Description of the stream")
