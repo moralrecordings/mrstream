@@ -1,7 +1,7 @@
 from typing import List, Optional
 import requests
 from twitchAPI.twitch import Twitch
-from twitchAPI.types import AuthScope
+from twitchAPI.types import AuthScope, VideoType
 from twitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token
 
 from . import config
@@ -66,6 +66,17 @@ def get_client(name: str) -> Twitch:
     tw.set_user_authentication(token, TWITCH_SCOPES, refresh_token)
     return tw
 
+def get_past_streams(name: str):
+    tw = get_client(name)
+    cfg = config.get()
+    sub = cfg[f"config.{name}"]
+    highlights = tw.get_videos(user_id=sub.get("user_id"), video_type=VideoType.HIGHLIGHT)
+    return [{
+        "id": x["id"],
+        "url": x["url"],
+        "title": x["title"],
+        "created_at": x["created_at"][:-1]+"+00:00",
+    } for x in highlights['data']]
 
 def create_stream(
     name: str,
