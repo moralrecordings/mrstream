@@ -76,8 +76,11 @@ def create_stream(
     payload = {
         "channelId": sub["channel_id"], 
         "name": title,
-        "saveReplay": vod,
         "privacy": 1,
+        "replaySettings": {
+            "privacy": 1,
+        },
+        "saveReplay": vod,
     }
     if description:
         payload["description"] = description
@@ -87,7 +90,7 @@ def create_stream(
 
     response = requests.post(
         f"{sub['base_url']}/api/v1/videos/live",
-        payload,
+        json=payload,
         headers=headers
     )
     response.raise_for_status()

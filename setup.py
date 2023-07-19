@@ -33,7 +33,7 @@ setup(
         "requests >= 2.28.0",
         "oauth2-client >= 1.2.1",
         "appdirs >= 1.4.4",
-        "twitchAPI >= 2.5.5",
+        "twitchAPI == 2.5.5",
         "thefuzz >= 0.19.0",
     ],
     extras_require={
