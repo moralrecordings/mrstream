@@ -35,6 +35,7 @@ setup(
         "appdirs >= 1.4.4",
         "twitchAPI == 4.1.0",
         "thefuzz >= 0.19.0",
+        "websockets == 12.0",
     ],
     extras_require={
     },

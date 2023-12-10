@@ -130,6 +130,13 @@ def game_lookup(args: argparse.Namespace) -> None:
 def runserver(args: argparse.Namespace) -> None:
     run_server()
 
+def runevents(args: argparse.Namespace) -> None:
+    cfg = config.get()
+    for k in cfg.keys():
+        if k.startswith("config.") and cfg[k]["type"] == "twitch":
+            svc_name = k[7:]
+            asyncio.run(twitch.run_eventsub_server(svc_name, args.port))
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -186,6 +193,10 @@ def main():
     
     parser_runserver = subparser.add_parser("runserver", description="Run an nginx RTMP muxer")
     parser_runserver.set_defaults(func=runserver)
+
+    parser_runevents = subparser.add_parser("runevents", description="Run an Websocket bridge for Twitch events")
+    parser_runevents.add_argument("--port", help="Port to use", type=int, default=26661)
+    parser_runevents.set_defaults(func=runevents)
 
     parser_set_defaults = subparser.add_parser("set_defaults", description="Set the defaults for a streaming session")
     parser_set_defaults.add_argument("--title", help="Title of the stream")
