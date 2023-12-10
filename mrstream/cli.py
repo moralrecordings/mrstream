@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 
 from . import config, twitch, peertube
 from .game_lookup import search
@@ -42,7 +43,7 @@ def create(args: argparse.Namespace):
                 continue
             print(f"Creating stream on {svc_name}...")
             if cfg[key]["type"] == "twitch":
-                twitch.create_stream(
+                asyncio.run(twitch.create_stream(
                     svc_name,
                     title=args.title,
                     description=args.description,
@@ -51,7 +52,7 @@ def create(args: argparse.Namespace):
                     gameid=args.gameid,
                     lang=args.lang,
                     vod=args.vod
-                )
+                ))
             elif cfg[key]["type"] == "peertube":
                 peertube.create_stream(
                     svc_name,

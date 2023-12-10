@@ -2,6 +2,7 @@ from typing import Dict, List, NamedTuple, Optional
 import requests
 from thefuzz import process
 
+import asyncio
 import csv
 import os
 
@@ -13,12 +14,10 @@ TWITCH_GAME_LIST_PATH = os.path.join(config.LOCAL_CONFIG_DIR, "twitch_game_info.
 _TWITCH_GAME_NAME_TO_ID: Dict[str, str] = {}
 _TWITCH_GAME_NAMES: List[str] = []
 
-
 class GameResult(NamedTuple):
     name: str
     game_id: str
     confidence: Optional[int]
-
 
 def get_by_id(id: int) -> Optional[GameResult]:
     result = get_by_id_twitch(id)
@@ -41,15 +40,13 @@ def search(name: str) -> List[GameResult]:
         result = search_local(name)
     return result
 
-
 def search_twitch(name: str) -> List[GameResult]:
     cfg = config.get()
     for k in cfg.keys():
         if k.startswith("config.") and cfg[k]["type"] == "twitch":
             svc_name = k[7:]
-            client = twitch.get_client(svc_name)
-            results = client.search_categories(name)
-            return [GameResult(name=x["name"], game_id=x["id"], confidence=None) for x in results["data"]]
+            results = asyncio.run(twitch.search_games(svc_name, name))
+            return [GameResult(name=x.name, game_id=x.id, confidence=None) for x in results]
     return []
 
 
