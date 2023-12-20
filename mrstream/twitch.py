@@ -142,37 +142,50 @@ async def get_eventsub_websocket(name: str) -> AsyncIterator[EventSubWebsocket]:
         await tw.close()
 
 
-async def eventsub_handler(ws: websocket_server.WebSocketServerProtocol, name: str) -> None:
+EVENT_BUS: dict[tuple, asyncio.Queue[str]] = {}
+
+async def eventsub_handler(ws: websocket_server.WebSocketServerProtocol) -> None:
     print(f"Client joined - {ws.remote_address}")
+    EVENT_BUS[ws.remote_address] = asyncio.Queue()
+    try:
+        while not ws.closed:
+            try:
+                data = EVENT_BUS[ws.remote_address].get_nowait()
+                await ws.send(data)
+            except asyncio.QueueEmpty:
+                pass
+
+            await asyncio.sleep(0.1)
+    finally:
+        print(f"Client quit - {ws.remote_address}")
+
+
+async def run_eventsub_server(name: str, port: int=26661) -> None:
     cfg = config.get()
     sub = cfg[f"config.{name}"]
+
     async def event_raid(ev: ChannelRaidEvent) -> None:
         print(f"RAID - {ev.event.from_broadcaster_user_name}, {ev.event.viewers} souls")
-        await ws.send(json.dumps({
-            "type": "raid",
-            "username": ev.event.from_broadcaster_user_name,
-            "viewers": ev.event.viewers,
-        }))
+        for queue in EVENT_BUS.values():
+            await queue.put(json.dumps({
+                "type": "raid",
+                "username": ev.event.from_broadcaster_user_name,
+                "viewers": ev.event.viewers,
+            }))
 
     async def event_follow(ev: ChannelFollowEvent) -> None:
         print(f"FOLLOW - {ev.event.user_name}")
-        await ws.send(json.dumps({
-            "type": "follow",
-            "username": ev.event.user_name,
-        }))
+        for queue in EVENT_BUS.values():
+            await queue.put(json.dumps({
+                "type": "follow",
+                "username": ev.event.user_name,
+            }))
 
     async with get_eventsub_websocket(name) as eventsub:
         await eventsub.listen_channel_follow_v2(sub.get("user_id"), sub.get("user_id"), event_follow)
-        await eventsub.listen_channel_raid(event_raid, None, sub.get("user_id"))
-        try:
-            await ws.wait_closed()
-        finally:
-            print(f"Client quit - {ws.remote_address}")
-    
-
-async def run_eventsub_server(name: str, port: int=26661) -> None:
-    async with websocket_server.serve(partial(eventsub_handler, name=name), "", port):
-        print(f"Websocket server running on ws://0.0.0.0:{port}")
-        await asyncio.Future()
+        await eventsub.listen_channel_raid(event_raid, sub.get("user_id"), None)
+        async with websocket_server.serve(partial(eventsub_handler), "", port):
+            print(f"Websocket server running on ws://localhost:{port}")
+            await asyncio.Future()
 
 
