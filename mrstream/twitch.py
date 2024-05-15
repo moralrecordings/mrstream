@@ -7,12 +7,14 @@ from websockets import server as websocket_server
 import requests
 import json
 
+from twitchAPI.chat import Chat, ChatEvent, ChatMessage
 from twitchAPI.object.api import SearchCategoryResult, Video
-from twitchAPI.object.eventsub import ChannelFollowEvent, ChannelRaidEvent
+from twitchAPI.object.eventsub import ChannelChatMessageEvent, ChannelFollowEvent, ChannelRaidEvent
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, VideoType
 from twitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token
 from twitchAPI.eventsub.websocket import EventSubWebsocket
+from websockets.typing import Data
 
 from . import config
 
@@ -24,6 +26,9 @@ TWITCH_SCOPES = [
     AuthScope.USER_EDIT,
     AuthScope.USER_EDIT_BROADCAST,
     AuthScope.MODERATOR_READ_FOLLOWERS,
+    AuthScope.USER_READ_CHAT,
+    AuthScope.USER_WRITE_CHAT,
+    AuthScope.CHANNEL_BOT,
 ]
 
 
@@ -38,7 +43,7 @@ async def authenticate(name: str) -> None:
         validation = await validate_token(sub["token"])
         if "user_id" in validation:
             return
-        if "refresh_token" in sub:
+        if "refresh_token" in sub and sub["refresh_token"].strip():
             token, refresh_token = await refresh_access_token(
                 sub["refresh_token"], client_id, client_secret
             )
@@ -131,8 +136,7 @@ async def create_stream(
 
 
 @asynccontextmanager
-async def get_eventsub_websocket(name: str) -> AsyncIterator[EventSubWebsocket]:
-    tw = await get_client(name)
+async def get_eventsub_websocket(tw: Twitch) -> AsyncIterator[EventSubWebsocket]:
     eventsub = EventSubWebsocket(tw)
     eventsub.start()
     try:
@@ -142,9 +146,10 @@ async def get_eventsub_websocket(name: str) -> AsyncIterator[EventSubWebsocket]:
         await tw.close()
 
 
+
 EVENT_BUS: dict[tuple, asyncio.Queue[str]] = {}
 
-async def eventsub_handler(ws: websocket_server.WebSocketServerProtocol) -> None:
+async def eventsub_handler(client_response: Callable[[str], Awaitable[None]], ws: websocket_server.WebSocketServerProtocol) -> None:
     print(f"Client joined - {ws.remote_address}")
     EVENT_BUS[ws.remote_address] = asyncio.Queue()
     try:
@@ -155,7 +160,12 @@ async def eventsub_handler(ws: websocket_server.WebSocketServerProtocol) -> None
             except asyncio.QueueEmpty:
                 pass
 
-            await asyncio.sleep(0.1)
+            try:
+                data: str = await asyncio.wait_for(ws.recv(), 0.1) # type: ignore
+                await client_response(data)
+            except asyncio.TimeoutError:
+                pass
+
     finally:
         print(f"Client quit - {ws.remote_address}")
 
@@ -163,6 +173,7 @@ async def eventsub_handler(ws: websocket_server.WebSocketServerProtocol) -> None
 async def run_eventsub_server(name: str, port: int=26661) -> None:
     cfg = config.get()
     sub = cfg[f"config.{name}"]
+    tw = await get_client(name)
 
     async def event_raid(ev: ChannelRaidEvent) -> None:
         print(f"RAID - {ev.event.from_broadcaster_user_name}, {ev.event.viewers} souls")
@@ -181,10 +192,31 @@ async def run_eventsub_server(name: str, port: int=26661) -> None:
                 "username": ev.event.user_name,
             }))
 
-    async with get_eventsub_websocket(name) as eventsub:
+    async def event_chat_message(ev: ChannelChatMessageEvent) -> None:
+        print(f"CHAT MESSAGE - {ev.event.message_id} <{ev.event.chatter_user_name}> {ev.event.message.text}")
+        for queue in EVENT_BUS.values():
+            await queue.put(json.dumps({
+                "type": "message",
+                "username": ev.event.chatter_user_name,
+                "text": ev.event.message.text,
+                "id": ev.event.message_id,
+            }))
+
+
+    async def handle_client_response(message: Data) -> None:
+        data = json.loads(message)
+        if isinstance(data, dict):
+            if data.get("type") == "message":
+                await tw.send_chat_message(sub.get("user_id"), sub.get("user_id"), data.get("text", ""), data.get("reply_id"))
+                return
+        print(f"Unknown data: {message}")
+    
+
+    async with get_eventsub_websocket(tw) as eventsub:
         await eventsub.listen_channel_follow_v2(sub.get("user_id"), sub.get("user_id"), event_follow)
         await eventsub.listen_channel_raid(event_raid, sub.get("user_id"), None)
-        async with websocket_server.serve(partial(eventsub_handler), "", port):
+        await eventsub.listen_channel_chat_message(sub.get("user_id"), sub.get("user_id"), event_chat_message)
+        async with websocket_server.serve(partial(eventsub_handler, handle_client_response), "", port):
             print(f"Websocket server running on ws://localhost:{port}")
             await asyncio.Future()
 
