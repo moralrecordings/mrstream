@@ -21,4 +21,4 @@ def run_server():
 
     update_config()
 
-    subprocess.call(["docker", "run", "-it", f"--volume={config.LOCAL_NGINX_PATH}:/etc/nginx/push.conf", "--publish=1935:1935", "--publish=19350:19350", "mrstream-nginx:latest"])
+    subprocess.call(["docker", "run", "-i", f"--volume={config.LOCAL_NGINX_PATH}:/etc/nginx/push.conf", "--publish=1935:1935", "--publish=19350:19350", "mrstream-nginx:latest"])

@@ -1,5 +1,8 @@
 import argparse
 import asyncio
+import pathlib
+
+from mrstream.website import update_website
 
 from . import config, twitch, peertube
 from .game_lookup import search
@@ -127,6 +130,10 @@ def game_lookup(args: argparse.Namespace) -> None:
         print(f"{r.name} (id {r.game_id}, confidence {r.confidence})")
 
 
+def website(args: argparse.Namespace) -> None:
+    update_website(args.BASE_PATH)
+
+
 def runserver(args: argparse.Namespace) -> None:
     run_server()
 
@@ -197,6 +204,10 @@ def main():
     parser_runevents = subparser.add_parser("runevents", description="Run an Websocket bridge for Twitch events")
     parser_runevents.add_argument("--port", help="Port to use", type=int, default=26661)
     parser_runevents.set_defaults(func=runevents)
+
+    parser_website = subparser.add_parser("website", description="Generate Pelican posts for Twitch highlights")
+    parser_website.add_argument("BASE_PATH", help="Content folder to output to", type=pathlib.Path)
+    parser_website.set_defaults(func=website)
 
     parser_set_defaults = subparser.add_parser("set_defaults", description="Set the defaults for a streaming session")
     parser_set_defaults.add_argument("--title", help="Title of the stream")
