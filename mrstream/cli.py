@@ -2,11 +2,11 @@ import argparse
 import asyncio
 import pathlib
 
-from mrstream.website import update_website
 
 from . import config, twitch, peertube
 from .game_lookup import search
 from .nginx import run_server
+from .website import update_website
 
 def add_twitch(args: argparse.Namespace) -> None:
     cfg = config.get()

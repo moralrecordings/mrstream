@@ -4,6 +4,7 @@ from functools import partial
 from typing import AsyncContextManager, AsyncIterator, Awaitable, Callable, List, Optional
 from typing_extensions import NamedTuple
 from websockets import server as websocket_server
+from websockets.exceptions import WebSocketException 
 import requests
 import json
 
@@ -163,7 +164,7 @@ async def eventsub_handler(client_response: Callable[[str], Awaitable[None]], ws
             try:
                 data: str = await asyncio.wait_for(ws.recv(), 0.1) # type: ignore
                 await client_response(data)
-            except asyncio.TimeoutError:
+            except (WebSocketException, asyncio.TimeoutError):
                 pass
 
     finally:
