@@ -193,6 +193,20 @@ async def run_eventsub_server(name: str, port: int=26661) -> None:
                 "username": ev.event.user_name,
             }))
 
+    EMOTES: dict[str, dict[str, tuple[str, str]]] = {}
+    async def get_emote_name_url(set_id: str, emote_id: str) -> tuple[str, str]:
+        if set_id not in EMOTES:
+            set_result = await tw.get_emote_sets([set_id])
+            EMOTES[set_id] = {}
+            for emote in set_result.data:
+                result = set_result.template
+                result = result.replace("{{id}}", emote.id)
+                result = result.replace("{{format}}", "animated" if "animated" in emote.format else "static")
+                result = result.replace("{{theme_mode}}", "light" if "light" in emote.theme_mode else "dark")
+                result = result.replace("{{scale}}", max(emote.scale))
+                EMOTES[set_id][emote.id] = (emote.name, result)
+        return EMOTES[set_id][emote_id]
+
     async def event_chat_message(ev: ChannelChatMessageEvent) -> None:
         print(f"CHAT MESSAGE - {ev.event.message_id} <{ev.event.chatter_user_name}> {ev.event.message.text}")
         for queue in EVENT_BUS.values():
@@ -203,7 +217,22 @@ async def run_eventsub_server(name: str, port: int=26661) -> None:
                 "id": ev.event.message_id,
             }))
 
-
+        for frag in ev.event.message.fragments:
+            if frag.type == "emote" and frag.emote:
+                name, url = await get_emote_name_url(frag.emote.emote_set_id, frag.emote.id)
+                print(f"EMOTE - {ev.event.message_id} <{ev.event.chatter_user_name}> {name} {url}")
+                for queue in EVENT_BUS.values():
+                    await queue.put(json.dumps({
+                        "type": "emote",
+                        "username": ev.event.chatter_user_name,
+                        "message_id": ev.event.message_id,
+                        "id": frag.emote.id,
+                        "emote_set_id": frag.emote.emote_set_id,
+                        "owner_id": frag.emote.owner_id,
+                        "name": name,
+                        "url": url,
+                    }))
+        
     async def handle_client_response(message: Data) -> None:
         data = json.loads(message)
         if isinstance(data, dict):
